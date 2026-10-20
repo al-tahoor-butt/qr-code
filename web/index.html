@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Architect - High-Fidelity Custom QR Generator</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233b82f6'/><path d='M25 25h20v20h-20zM55 25h20v20h-20zM25 55h20v20h-20zM60 60h15v15h-15z' fill='white'/></svg>">
+</head>
+<body>
+
+  <!-- Password Protected Splash Screen -->
+  <div id="splash-overlay" class="splash-overlay">
+    <div class="splash-card">
+      <div class="splash-badge">
+        <span>🔒 Secure Remote Access</span>
+      </div>
+      <h2 class="splash-title">QR Architect</h2>
+      <p class="splash-subtitle">
+        This instance is password-protected. Please enter your credentials to unlock the QR code studio.
+      </p>
+
+      <div id="splash-error" class="splash-error"></div>
+
+      <form id="splash-form">
+        <div class="password-input-wrapper">
+          <input 
+            type="password" 
+            id="splash-password" 
+            placeholder="Enter access password..." 
+            autocomplete="current-password"
+            required
+            autofocus
+          >
+          <button type="button" id="btn-toggle-eye" class="btn-toggle-eye" title="Toggle visibility">👁️</button>
+        </div>
+
+        <button type="submit" id="btn-unlock" class="btn btn-primary" style="width: 100%;">
+          <span>Unlock Dashboard</span>
+        </button>
+      </form>
+
+      <div class="splash-footer">
+        🛡️ Protected with Salted PBKDF2-HMAC-SHA256
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="header-content">
+      <div class="logo-brand">
+        <span class="logo-badge">QR</span>
+        <h1 class="brand-title">QR Architect</h1>
+      </div>
+      <div class="header-actions">
+        <a href="/docs" target="_blank" class="api-link">API Docs</a>
+        <button id="btn-logout" class="btn-logout">
+          <span>🔒 Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="app-grid">
+      
+      <!-- Customization Controls Column -->
+      <div class="controls-column">
+        
+        <!-- 1. Content & Link -->
+        <div class="card form-section">
+          <h2 class="card-title">1. Content & Destination Link</h2>
+          <div class="input-group">
+            <label class="section-label" for="data-input">Target URL or Data Payload</label>
+            <input type="text" id="data-input" value="https://antigravity.google.com" placeholder="https://example.com/your-link">
+            <div class="quick-pills">
+              <button class="pill-btn" data-value="https://antigravity.google.com">Google Antigravity</button>
+              <button class="pill-btn" data-value="https://github.com/google/antigravity">GitHub Repository</button>
+              <button class="pill-btn" data-value="WIFI:S:MyOfficeWiFi;T:WPA;P:SecretPassword123;;">WiFi Network</button>
+              <button class="pill-btn" data-value="mailto:contact@example.com?subject=Inquiry">Email Contact</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Designer Presets -->
+        <div class="card form-section">
+          <h2 class="card-title">2. Designer Presets</h2>
+          <div class="presets-grid" id="presets-container">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- 3. Colors & Gradients -->
+        <div class="card form-section">
+          <h2 class="card-title">3. Colors & Gradient Styling</h2>
+          
+          <div class="color-controls-grid">
+            <!-- Front color -->
+            <div class="color-picker-item">
+              <span class="color-picker-label">Foreground Dots</span>
+              <div class="color-picker-wrapper">
+                <input type="color" id="front-color" value="#1e293b">
+                <span class="hex-display" id="front-hex">#1e293b</span>
+              </div>
+            </div>
+
+            <!-- Background color -->
+            <div class="color-picker-item">
+              <span class="color-picker-label">Background</span>
+              <div class="color-picker-wrapper">
+                <input type="color" id="back-color" value="#ffffff">
+                <span class="hex-display" id="back-hex">#ffffff</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="transparent-bg" style="width: auto; cursor: pointer;">
+            <label for="transparent-bg" style="font-size: 0.85rem; cursor: pointer; color: var(--text-muted);">
+              Transparent Background (PNG / SVG)
+            </label>
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <label class="section-label" for="gradient-type">Gradient Style</label>
+            <select id="gradient-type">
+              <option value="none">Solid Color (None)</option>
+              <option value="linear_horizontal">Linear Horizontal (Left to Right)</option>
+              <option value="linear_vertical">Linear Vertical (Top to Bottom)</option>
+              <option value="linear_diagonal">Linear Diagonal (Corner to Corner)</option>
+              <option value="radial">Radial (Center Outward)</option>
+            </select>
+          </div>
+
+          <div class="color-picker-item" id="gradient-end-row" style="margin-top: 0.75rem; display: none;">
+            <span class="color-picker-label">Gradient End Color</span>
+            <div class="color-picker-wrapper">
+              <input type="color" id="gradient-end-color" value="#3b82f6">
+              <span class="hex-display" id="grad-end-hex">#3b82f6</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <label class="section-label">Corner Finder Eyes (Outer & Inner)</label>
+            <div class="color-controls-grid">
+              <div class="color-picker-item">
+                <span class="color-picker-label">Eye Outer Frame</span>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="eye-outer-color" value="#4338ca">
+                  <span class="hex-display" id="eye-outer-hex">#4338ca</span>
+                </div>
+              </div>
+              <div class="color-picker-item">
+                <span class="color-picker-label">Eye Inner Ball</span>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="eye-inner-color" value="#06b6d4">
+                  <span class="hex-display" id="eye-inner-hex">#06b6d4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Module & Eye Shapes -->
+        <div class="card form-section">
+          <h2 class="card-title">4. Module & Eye Geometry</h2>
+          <div class="input-group">
+            <label class="section-label">Body Module Style</label>
+            <div class="style-chips">
+              <div class="style-chip active" data-module-style="rounded">Rounded</div>
+              <div class="style-chip" data-module-style="circle">Circle / Dots</div>
+              <div class="style-chip" data-module-style="square">Classic Square</div>
+              <div class="style-chip" data-module-style="gapped">Gapped Square</div>
+            </div>
+          </div>
+          <div class="input-group" style="margin-top: 1rem;">
+            <label class="section-label">Corner Eye Style</label>
+            <div class="style-chips">
+              <div class="style-chip active" data-eye-style="rounded">Rounded</div>
+              <div class="style-chip" data-eye-style="circle">Circular</div>
+              <div class="style-chip" data-eye-style="square">Square</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Logo & Image Embedding -->
+        <div class="card form-section">
+          <h2 class="card-title">5. Logo & Image Embedding</h2>
+          
+          <div class="upload-dropzone" id="upload-dropzone">
+            <input type="file" id="logo-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display: none;">
+            <div class="dropzone-text">
+              📁 <strong>Click to upload</strong> or drag & drop logo image<br>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">(Supports PNG, SVG, JPG, WEBP)</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+            <button class="pill-btn" id="btn-sample-logo">Use Sample Logo</button>
+          </div>
+
+          <div class="logo-preview-row" id="logo-preview-row" style="display: none;">
+            <img id="logo-thumbnail" class="logo-thumbnail" alt="Logo preview">
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 600;">Embedded Center Logo</div>
+              <div style="font-size: 0.75rem; color: var(--accent-green);">Auto-isolated with safe quiet-zone</div>
+            </div>
+            <button class="btn-remove-logo" id="btn-remove-logo">Remove</button>
+          </div>
+
+          <!-- Logo Scale Slider -->
+          <div class="slider-container">
+            <div class="slider-header">
+              <span class="section-label" style="margin-bottom: 0;">Logo Size</span>
+              <span class="slider-val" id="logo-scale-val">22%</span>
+            </div>
+            <input type="range" id="logo-scale" min="0.08" max="0.28" step="0.01" value="0.22">
+            <span class="safe-zone-badge">🛡️ Safe Zone (&le; 28% retains link integrity)</span>
+          </div>
+
+          <!-- Logo Shape & Padding -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+            <div>
+              <label class="section-label" for="logo-shape">Mask Shape</label>
+              <select id="logo-shape">
+                <option value="circle">Circular</option>
+                <option value="rounded">Rounded Box</option>
+                <option value="square">Square</option>
+              </select>
+            </div>
+            <div>
+              <div class="slider-header">
+                <label class="section-label" for="logo-padding" style="margin-bottom: 0;">Quiet Margin</label>
+                <span class="slider-val" id="logo-padding-val">4px</span>
+              </div>
+              <input type="range" id="logo-padding" min="0" max="16" step="1" value="4">
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Error Correction -->
+        <div class="card form-section">
+          <h2 class="card-title">6. Error Correction Capacity</h2>
+          <label class="section-label" for="ecc-select">Reed-Solomon Level</label>
+          <select id="ecc-select">
+            <option value="H" selected>Level H (High ~30% recovery - Recommended for logos)</option>
+            <option value="Q">Level Q (Quartile ~25% recovery)</option>
+            <option value="M">Level M (Medium ~15% recovery)</option>
+            <option value="L">Level L (Low ~7% recovery)</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Live Interactive Preview & Verification -->
+      <div class="preview-column">
+        
+        <!-- Live Preview Box -->
+        <div class="preview-box">
+          <img id="preview-img" class="preview-img" alt="Live QR Preview">
+        </div>
+
+        <!-- Real-Time Link Retention & Verification Card -->
+        <div class="verification-card">
+          <div class="verification-status">
+            <span class="status-indicator" id="status-indicator"></span>
+            <span class="status-title" id="status-title">Verifying Link Retention...</span>
+          </div>
+
+          <div class="link-display" id="decoded-link">
+            https://antigravity.google.com
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric-badge">
+              <div class="metric-title">Contrast</div>
+              <div class="metric-val" id="metric-contrast">14.2:1</div>
+            </div>
+            <div class="metric-badge">
+              <div class="metric-title">Logo Area</div>
+              <div class="metric-val" id="metric-logo">4.8%</div>
+            </div>
+            <div class="metric-badge">
+              <div class="metric-title">ECC Mode</div>
+              <div class="metric-val" id="metric-ecc">Level H</div>
+            </div>
+          </div>
+
+          <div class="alert-box" id="warning-box" style="display: none;"></div>
+        </div>
+
+        <!-- Export Actions -->
+        <div class="download-actions">
+          <button class="btn btn-primary" id="btn-download-png">
+            ⬇️ Download PNG (HD)
+          </button>
+          <button class="btn btn-secondary" id="btn-download-svg">
+            📐 Download SVG (Vector)
+          </button>
+        </div>
+        <button class="btn btn-secondary" id="btn-copy-img" style="width: 100%;">
+          📋 Copy Image to Clipboard
+        </button>
+
+      </div>
+
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

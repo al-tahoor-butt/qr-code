@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  qr-architect:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_PASSWORD=${APP_PASSWORD:-qr-admin-2026}
+      - APP_SECRET_KEY=${APP_SECRET_KEY:-}
+    restart: unless-stopped

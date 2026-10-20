@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qr-architect"
+version = "1.0.0"
+description = "Production architecture for customizable QR code generation with embedded logos and link retention verification."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "qrcode[pil]>=8.0.0",
+    "pillow>=10.0.0",
+    "segno>=1.6.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "pydantic>=2.0.0",
+    "zxing-cpp>=3.0.0",
+    "python-multipart>=0.0.9"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "requests>=2.31.0"
+]
+
+[project.scripts]
+qr-gen = "qr_architect.cli:main"
+qr-server = "qr_architect.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["qr_architect*"]

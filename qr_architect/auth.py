@@ -9,15 +9,19 @@ import hmac
 import hashlib
 import secrets
 import time
-from typing import Optional, Tuple
-from fastapi import Request, Response, HTTPException, status
+from typing import Optional
 from pydantic import BaseModel
 
 
-# Iterations per OWASP / NIST password hashing guidelines
-PBKDF2_ITERATIONS = 600_000
+# Standard iterations for PBKDF2
+PBKDF2_ITERATIONS = 100_000
 SESSION_MAX_AGE_SECONDS = 7 * 24 * 3600  # 7 days
 COOKIE_NAME = "qr_session"
+
+# Default fallback credentials for 'qr-admin-2026'
+DEFAULT_SALT_HEX = "e9b5d78243b6716b7628b2bc6dda48ff"
+DEFAULT_HASH_HEX = "eadbbf40bf25ec9ca94e823ff188c8e9dad5e2e94899a29a151988e8873c0171"
+DEFAULT_STORED_HASH = f"pbkdf2:sha256:{PBKDF2_ITERATIONS}:{DEFAULT_SALT_HEX}:{DEFAULT_HASH_HEX}"
 
 
 def generate_secret_key() -> str:
@@ -31,15 +35,15 @@ def generate_secret_key() -> str:
 SECRET_KEY = generate_secret_key().encode("utf-8")
 
 
-def hash_password(password: str, salt: Optional[bytes] = None) -> str:
+def hash_password(password: str, salt: Optional[bytes] = None, iterations: int = PBKDF2_ITERATIONS) -> str:
     """
     Hash a password using PBKDF2-HMAC-SHA256 with a cryptographically secure random salt.
     Format: pbkdf2:sha256:<iterations>:<salt_hex>:<hash_hex>
     """
     if salt is None:
         salt = secrets.token_bytes(16)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
-    return f"pbkdf2:sha256:{PBKDF2_ITERATIONS}:{salt.hex()}:{dk.hex()}"
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return f"pbkdf2:sha256:{iterations}:{salt.hex()}:{dk.hex()}"
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
@@ -64,18 +68,20 @@ def get_configured_password_hash() -> str:
     Retrieve or initialize the system password hash from environment.
     Supports:
     1. APP_PASSWORD_HASH: Pre-computed hash string
-    2. APP_PASSWORD: Plaintext password (auto-hashed with random salt)
+    2. APP_PASSWORD: Plaintext password (hashed with random salt)
     3. Fallback default: 'qr-admin-2026'
     """
     stored = os.environ.get("APP_PASSWORD_HASH")
     if stored:
         return stored.strip()
 
-    raw_password = os.environ.get("APP_PASSWORD", "qr-admin-2026")
-    # Store in environment so subsequent calls reuse the same salt
-    computed = hash_password(raw_password)
-    os.environ["APP_PASSWORD_HASH"] = computed
-    return computed
+    raw_password = os.environ.get("APP_PASSWORD")
+    if raw_password:
+        computed = hash_password(raw_password)
+        os.environ["APP_PASSWORD_HASH"] = computed
+        return computed
+
+    return DEFAULT_STORED_HASH
 
 
 def create_session_token() -> str:

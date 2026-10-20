@@ -53,7 +53,7 @@
         <h1 class="brand-title">QR Architect</h1>
       </div>
       <div class="header-actions">
-        <a href="/docs" target="_blank" class="api-link">API Docs</a>
+        <a href="/docs" target="_blank" class="api-link" id="api-docs-link">API Docs</a>
         <button id="btn-logout" class="btn-logout">
           <span>🔒 Logout</span>
         </button>
@@ -257,6 +257,7 @@
         
         <!-- Live Preview Box -->
         <div class="preview-box">
+          <div id="client-canvas-container" style="display: none;"></div>
           <img id="preview-img" class="preview-img" alt="Live QR Preview">
         </div>
 
@@ -307,6 +308,7 @@
     </div>
   </main>
 
+  <script src="qr-code-styling.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

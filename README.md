@@ -2,6 +2,20 @@
 
 A production-grade architecture for generating custom-styled QR codes with custom colors, gradients, module geometry, and embedded center logos **while mathematically guaranteeing link retention and scannability**.
 
+Includes a **salted & hashed password-protected splash screen** for secure public/remote web access.
+
+---
+
+## 🌐 Live Web Access
+
+The web dashboard is published and live on GitHub Pages:
+
+🔗 **[https://al-tahoor-butt.github.io/qr-code/](https://al-tahoor-butt.github.io/qr-code/)**
+
+- **Splash Screen Authentication**: When accessing the site, users are gated by a secure password modal.
+- **Default Access Password**: `qr-admin-2026`
+- **Security Standard**: Uses **PBKDF2-HMAC-SHA256 with 100,000 iterations and a cryptographically random salt**. Verification runs in-browser via the native Web Cryptography API (`crypto.subtle`) for GitHub Pages, and in Python for backend/Docker deployments.
+
 ---
 
 ## 🌟 Key Capabilities
@@ -10,7 +24,7 @@ A production-grade architecture for generating custom-styled QR codes with custo
   - Automatically enforces **Reed-Solomon Error Correction Level H (~30% recovery capacity)** or Level Q (~25%) when embedding logos.
   - Automatically clamps embedded logo scale to safe bounds ($\le 28\%$ of total QR dimension, default $22\%$) so data modules and finder patterns are never critically occluded.
   - Adds an automatic anti-bleed quiet margin around logos so camera binarization algorithms cleanly separate data dots from the logo artwork.
-  - Integrated with **`zxing-cpp`** for automated decode & link retention verification upon every generation.
+  - Integrated with **`zxing-cpp`** for automated decode & link retention verification.
 
 - **Full Palette & Gradient Customization**:
   - **Foreground modules**: Solid colors or gradients (Linear Horizontal, Linear Vertical, Linear Diagonal, Radial).
@@ -19,72 +33,71 @@ A production-grade architecture for generating custom-styled QR codes with custo
   - **Module Geometries**: Rounded, Circular Dots, Classic Squares, and Gapped Squares.
 
 - **Dual-Mode Vector & High-Res Raster Export**:
-  - **PNG / JPEG / WebP**: Crisp raster exports up to print resolution (1024px, 2048px, 4096px).
+  - **PNG / JPEG / WebP**: Crisp raster exports up to print resolution (1024px, 2048px).
   - **SVG Vector**: Clean, infinite-resolution vector graphics with native SVG gradients and embedded images.
 
 - **Multi-Interface Architecture**:
+  - **Public Web Dashboard**: Published to GitHub Pages with client-side WebCrypto authentication.
   - **Python SDK**: High-level typed API (`generate_qr`, `verify_qr_image`, `QRConfig`).
-  - **CLI Tool (`qr-gen`)**: Command-line generator and verifier for terminal pipelines and bash scripts.
-  - **REST API (FastAPI)**: High-performance endpoints with interactive Swagger UI (`/docs`).
-  - **Web Dashboard**: Interactive real-time UI with live preview, color pickers, and instant scannability badge.
+  - **CLI Tool (`qr-gen`)**: Command-line generator, verifier, and password manager (`./qr_gen set-password`).
+  - **REST API (FastAPI)**: High-performance backend endpoints with session token auth and Swagger UI (`/docs`).
+  - **Docker Container**: Instant 1-click deployment with `Dockerfile` and `docker-compose.yml`.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🔐 Password Security & Splash Screen
 
-```mermaid
-flowchart TD
-    subgraph InputInterfaces["Interfaces"]
-        CLI["CLI Tool (qr-gen)"]
-        WebUI["Web Dashboard (/)"]
-        API["REST API (/api/generate)"]
-        SDK["Python SDK (generate_qr)"]
-    end
+### Changing the Password
 
-    subgraph CoreEngine["QR Architect Core Engine"]
-        Config["QRConfig Model\n- Link / Payload\n- Colors & Gradients\n- Module & Eye Shapes\n- Logo & Safe Margin"]
-        Generator["Generator Engine (generator.py)\n- ECC Level H (30% recovery)\n- Finder Pattern Isolation\n- Logo Resizing & Masking\n- Anti-bleed Quiet Zone"]
-        Raster["Raster Engine (Pillow)\nPNG / JPEG / WebP"]
-        Vector["Vector Engine\nSVG with Gradients"]
-    end
-
-    subgraph VerificationEngine["Integrity & Scannability Verification"]
-        Decoder["ZXing-CPP Barcode Reader"]
-        Contrast["WCAG Luminance Contrast Calc"]
-        Report["Validation Report\n- is_valid\n- decoded_link == input_link\n- contrast_ratio\n- logo_coverage_pct\n- warnings / recommendations"]
-    end
-
-    InputInterfaces --> Config
-    Config --> Generator
-    Generator --> Raster
-    Generator --> Vector
-    Raster --> Decoder
-    Raster --> Contrast
-    Decoder --> Report
-    Contrast --> Report
+#### Option 1: For the Local / Backend Server
+Run the CLI tool to generate a new salted PBKDF2 hash:
+```bash
+./qr_gen set-password
+```
+Or specify the password via environment variables:
+```bash
+export APP_PASSWORD="MyNewSecretPassword"
+./qr_gen serve
 ```
 
+#### Option 2: For GitHub Pages (Client-Side Mode)
+1. Generate your salted hash:
+   ```bash
+   ./qr_gen set-password -p "MyNewSecretPassword"
+   ```
+2. Update the `AUTH_CONFIG` in [web/app.js](file:///home/alty/projects/qr-code/web/app.js):
+   ```javascript
+   const AUTH_CONFIG = {
+     iterations: 100000,
+     saltHex: "<your_salt_hex>",
+     hashHex: "<your_hash_hex>"
+   };
+   ```
+3. Commit and push: GitHub Actions will automatically redeploy the updated hash to GitHub Pages in ~30 seconds.
+
 ---
 
-## 🚀 Quick Start
+## 🚀 Local Quick Start
 
 ### 1. Installation
 
-The environment is already pre-configured with Python 3.11 and all dependencies. To install into any environment:
-
 ```bash
-# Clone or navigate to the workspace
 cd /home/alty/projects/qr-code
-
-# Activate virtualenv or install via pip
 source .venv/bin/activate
 pip install -e .
 ```
 
-### 2. Using the Executable CLI (`./qr_gen`)
+### 2. Run the Local Server & Dashboard
 
-#### Generate a styled QR code with custom colors:
 ```bash
+./qr_gen serve --port 8000
+```
+Open **http://localhost:8000** in your browser and enter `qr-admin-2026`.
+
+### 3. Using the Executable CLI (`./qr_gen`)
+
+```bash
+# Generate a styled QR code with custom colors and logo
 ./qr_gen generate \
   --data "https://antigravity.google.com" \
   --fg "#1e3a8a" \
@@ -92,145 +105,37 @@ pip install -e .
   --eye-outer "#1d4ed8" \
   --eye-inner "#0284c7" \
   --module-style rounded \
-  --output my_code.png
-```
-
-#### Embed an image/logo with automatic link retention verification:
-```bash
-./qr_gen generate \
-  --data "https://antigravity.google.com" \
-  --preset modern_tech \
   --logo examples/sample_logo.png \
-  --logo-shape circle \
-  --logo-scale 0.22 \
-  --output logo_qr.png
+  --output custom_qr.png
 ```
 
-#### Generate a scalable SVG vector with a diagonal gradient:
 ```bash
-./qr_gen generate \
-  --data "https://antigravity.google.com" \
-  --fg "#e11d48" \
-  --gradient linear_diagonal \
-  --gradient-end "#7c3aed" \
-  --output gradient_qr.svg
+# Verify link retention on an existing QR code
+./qr_gen verify custom_qr.png --expected "https://antigravity.google.com"
 ```
 
-#### Verify an existing QR code image:
+---
+
+## 🐳 Docker Deployment (Self-Hosted Remote Web Access)
+
+Run with Docker Compose:
 ```bash
-./qr_gen verify logo_qr.png --expected "https://antigravity.google.com"
+docker compose up -d
 ```
-
-#### Start the Interactive Web Dashboard & API server:
-```bash
-./qr_gen serve --port 8000
-```
-Then visit **http://localhost:8000** in your browser.
+Access at `http://your-server-ip:8000`.
 
 ---
 
-## 🐍 Python SDK Usage
+## 🧪 Automated Test Suite
 
-### Basic Customization & Verification
-
-```python
-from qr_architect import QRConfig, ColorConfig, ModuleStyle, EyeStyle, generate_qr
-
-config = QRConfig(
-    data="https://antigravity.google.com",
-    colors=ColorConfig(
-        front_color="#1e3a8a",
-        back_color="#ffffff",
-        eye_outer_color="#1d4ed8",
-        eye_inner_color="#0284c7"
-    ),
-    module_style=ModuleStyle.ROUNDED,
-    eye_style=EyeStyle.ROUNDED
-)
-
-result = generate_qr(config)
-
-# Link retention report
-print("Scannable?   :", result.validation.is_valid)
-print("Decoded Link :", result.validation.decoded_text)
-print("Contrast     :", result.validation.contrast_ratio)
-```
-
-### Embedding a Logo with Guaranteed Retention
-
-```python
-from qr_architect import (
-    QRConfig,
-    ColorConfig,
-    LogoConfig,
-    LogoShape,
-    ErrorCorrection,
-    generate_qr
-)
-
-config = QRConfig(
-    data="https://antigravity.google.com/enterprise",
-    colors=ColorConfig(
-        front_color="#0f172a",
-        back_color="#ffffff"
-    ),
-    error_correction=ErrorCorrection.H,  # 30% recovery capability
-    logo=LogoConfig(
-        image_path="examples/sample_logo.png",
-        scale=0.22,               # Safe zone <= 28%
-        shape=LogoShape.CIRCLE,   # Circle mask
-        padding=4,                # 4px quiet zone around logo
-        bg_color="#ffffff"
-    )
-)
-
-result = generate_qr(config)
-assert result.validation.matches_payload, "Decoded link must match input!"
-```
-
----
-
-## 🌐 REST API Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | Interactive Web Dashboard |
-| `GET` | `/docs` | Interactive Swagger / OpenAPI documentation |
-| `GET` | `/api/health` | Service health status |
-| `GET` | `/api/presets` | List all curated design presets |
-| `POST` | `/api/generate` | Generate QR code (returns base64 data URI + validation report) |
-| `POST` | `/api/generate/file` | Generate and return raw image binary directly (`image/png`, `image/svg+xml`) |
-| `POST` | `/api/verify` | Upload image file to decode and verify link retention |
-
----
-
-## 🎨 Curated Presets
-
-You can use presets out of the box with `--preset <name>`:
-- `modern_tech`: Slate blue body, indigo finder frame, cyan inner ball.
-- `sunset_glow`: Diagonal sunset gradient from coral rose (`#e11d48`) to vibrant violet (`#7c3aed`).
-- `emerald_pro`: Executive emerald green with forest frame and mint accents.
-- `cyberpunk_neon`: Dark midnight slate background with glowing cyan and magenta accents.
-- `royal_violet`: Linear horizontal gradient from indigo (`#6366f1`) to fuchsia (`#d946ef`).
-- `corporate_navy`: Classic authoritative navy blue with rounded modules.
-- `minimal_monochrome`: Pure black and white with high-contrast circular finder patterns.
-
----
-
-## 🧪 Test Suite
-
-Run the automated test suite with pytest:
-
+Run all 15 unit tests with pytest:
 ```bash
 .venv/bin/pytest -v
 ```
-
-All 13 unit tests verify:
-- End-to-end QR code generation and decoding
-- Color and gradient interpolation
-- Multi-style module rendering (square, circle, rounded, gapped)
-- Multi-style finder eye rendering
-- Logo embedding within Reed-Solomon Error Correction capacity
-- SVG vector valid generation
-- WCAG contrast analysis and low-contrast warnings
-- REST API endpoint functionality
+Tests cover:
+- PBKDF2 salting, hash generation, and constant-time verification
+- Session token creation, signing, and tampering protection
+- Unauthenticated route blocking (401 Unauthorized)
+- Color, gradient, eye shape, and module shape customization
+- Logo embedding within safe error correction thresholds
+- ZXing-CPP barcode decoding and link payload matching
